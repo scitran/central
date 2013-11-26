@@ -39,7 +39,7 @@ class AdminSplash(webapp2.RequestHandler):
 
 class Bootstrap(webapp2.RequestHandler):
 
-    """initially setup - should only need to be run once..."""
+    """initial setup - should only need to be run once..."""
 
     def get(self):
         self.response.write("""\
@@ -87,37 +87,38 @@ class NewAuthHost(webapp2.RequestHandler):
 
 class NewAuthHostConfirm(webapp2.RequestHandler):
 
-    """returns information to be sent to registrant, specifically 'uid'"""
+    """returns information to be returned to registrant, specifically 'uid'"""
 
     def post(self):
         commonname = self.request.get('commonname')
         pubkey = self.request.get('pubkey').replace('\r','')
         cn_clean = re.compile('[\W_]+').sub('_', commonname).strip().lower()  # '\W+' = not [a-zA-Z0-9_]
-        uid = cn_clean
+        _id = cn_clean
+        # _id = uuid.uuid4()
         counter = 1
         unique = False
         # if uid exists, increment uid until unique
         while not unique:
-            exists = AuthorizedHost().all().ancestor(key_AuthorizedHosts).filter('uid =', uid).get()
+            exists = AuthorizedHost().all().ancestor(key_AuthorizedHosts).filter('_id =', _id).get()
             if exists:
                 # if it does exist, add a suffix to the name
-                uid = cn_clean + '_' + str(counter)
+                _id = cn_clean + '_' + str(counter)
                 counter += 1
             else:
                 unique = True
 
-        #query/create - if nothing matches key_name, then create new with keyname
-        nah = AuthorizedHost(key_name=uid, parent=key_AuthorizedHosts, uid=uid, commonname=commonname, active=True)
+        # query/create - if nothing matches key_name, then create new with keyname
+        nah = AuthorizedHost(key_name=_id, parent=key_AuthorizedHosts, _id=_id, commonname=commonname, active=True)
         nah.pubkey = pubkey
         nah.put()
-        ## provide feedback to email to NIMS site admin
+        # provide feedback to email to NIMS site admin
         self.response.write("""\
                             <html>
                                 <title>NIMS - Registration Confirmation</title>
                                 <body>
                                     <div>
                                         <strong>Assigned UUID:</strong><br>
-                                        {uid}<br><br>
+                                        {_id}<br><br>
                                         <strong>Submitted Info:</strong><br>
                                         commonname:  {cn}<br>
                                         pubkey:      {pubkey}<br><br>
@@ -127,7 +128,7 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
                                     </div>
                                 </body>
                             </html>
-                            """.format(uid=uid, cn=commonname, pubkey=pubkey, nah=nah.as_dict()))
+                            """.format(_id=_id, cn=commonname, pubkey=pubkey, nah=nah.as_dict()))
 
 
 ### NOT IMPLEMENTENTED - webform to edit existing AuthorizedHost Entities

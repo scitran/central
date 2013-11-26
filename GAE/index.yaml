@@ -13,7 +13,7 @@ indexes:
 - kind: CRAMChallenge
   ancestor: yes
   properties:
-  - name: uid
+  - name: _id
   - name: timestamp
 
 - kind: NIMSServer
