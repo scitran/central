@@ -2,16 +2,7 @@
 #
 # @author:  Kevin S. Hahn
 
-import base64
-import logging
-import urllib2
-import httplib                      # to deal with httplib.InvalidURL exceptions
-import webapp2
-from Crypto.Signature import PKCS1_v1_5
-from Crypto.Hash import SHA
-from Crypto.PublicKey import RSA
 from google.appengine.ext import db
-logging.basicConfig(level=logging.INFO)
 
 
 key_AuthorizedHosts = db.Key.from_path('InterNIMS', 'AuthorizedHosts')
@@ -52,7 +43,7 @@ class NIMSServer(db.Model):
                 'ip4': self.ipv4,
                 'hostname': self.hostname,
                 'pubkey': self.pubkey,
-                'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': self.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%f'),
                 'users': self.userlist}
 
 
@@ -61,3 +52,6 @@ class CRAMChallenge(db.Model):
     _id = db.StringProperty()
     challenge = db.StringProperty()
     timestamp = db.DateTimeProperty(auto_now=True)  # auto_now sets time on put()
+
+    def __str__(self):
+        return '%s: %s' % (self._id, self.challenge)
