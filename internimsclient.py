@@ -53,15 +53,13 @@ class InterNIMSClient(object):
             headers = {'authorization': response}
             # this request should be approved, now give the FULL payloads
             r = requests.post(url=self.internimsurl, data=self.payload, headers=headers)
-
             # if repsonse OK, expect json object
             if r.status_code == 200:
                 sites = list(json.loads(r.content))             # response is peer list, as JSON
-                # parse response and update db.remotes
-                # can parse out own instance here
+                log.debug(sites)
+                # could parse out own instance here
                 for site in sites:
-                    # does a remote entry NEED to have a human readable timestamp??
-                    # or can the timestamp be a UTC datetime object?
+                    # does a remote entry need readable timestamp? will UTC datetime object suffice?
                     site['UTC'] = datetime.datetime.strptime(site['timestamp'], '%Y-%m-%dT%H:%M:%S.%f')
                     self.db.remotes.find_and_modify(query={'_id': site['_id']}, update=site, upsert=True, new=True)
                     log.debug('upserting remote site %s' % site['_id'])

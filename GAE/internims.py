@@ -120,7 +120,8 @@ class InterNIMS(webapp2.RequestHandler):
         """writes list of registered NIMS Instances."""
         # servers = NIMSServer.all().ancestor(key_NIMSServers).filter('_id !=', self.hostname).filter('timestamp >', datetime.datetime.now() - datetime.timedelta(minutes=2))
         servers = NIMSServer.all().ancestor(key_NIMSServers).filter('timestamp >', datetime.datetime.now() - datetime.timedelta(minutes=2))
-        self.response.write(json.dumps([server.as_dict() for server in servers], sort_keys=True, indent=4, separators=(',', ': ')))
+        # exclude requesting NIMS instance from response
+        self.response.write(json.dumps([server.as_dict() for server in servers if server._id != self._id], sort_keys=True, indent=4, separators=(',', ': ')))
 
 
 app = webapp2.WSGIApplication([('/', InterNIMS),
