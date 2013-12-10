@@ -13,7 +13,7 @@ import Crypto.Hash.HMAC
 import Crypto.Random.random
 from google.appengine.ext import db
 
-from internimsutil import AuthorizedHost, NIMSServer, CRAMChallenge, key_AuthorizedHosts, key_NIMSServers, key_Challenges
+from internimsutil import AuthorizedHost, NIMSServer, NIMSServerHistory, CRAMChallenge, key_AuthorizedHosts, key_NIMSServers, key_NIMSServerHistory, key_Challenges
 
 log = logging.getLogger('internims')
 
@@ -102,6 +102,7 @@ class InterNIMS(webapp2.RequestHandler):
 
     def update_datastore(self):
         """updates datastore NIMSServer entity for entity with matching _id."""
+        # update NIMSServer entity
         server = NIMSServer.all().ancestor(key_NIMSServers).filter('_id =', self._id).get() or NIMSServer(key_name=self._id, parent=key_NIMSServers, _id=self._id, commonname=self.commonname)
         server.hostname = self.hostname
         server.ipv4 = self.ipv4
@@ -109,12 +110,35 @@ class InterNIMS(webapp2.RequestHandler):
         server.timestamp = datetime.datetime.utcnow()
         server.pubkey = self.pubkey
         server.put()
-        log.debug('%s registered at %s' % (server._id, server.timestamp.isoformat()))
-        # clean out expired
-        expired_servers = NIMSServer.all().ancestor(key_NIMSServers).filter('timestamp <', datetime.datetime.now() - datetime.timedelta(minutes=2))
+        # locate an existing history entry, OR create a new NIMSServerHistory with automatic unique keyname
+        # unique keyname should prevent overwriting of host histories...
+        nsh = NIMSServerHistory.all().ancestor(key_NIMSServerHistory).filter('_id =', self._id).filter('expired =', False).get() or NIMSServerHistory(parent=key_NIMSServerHistory, _id=self._id)
+        nsh.expired = False
+        nsh.modified = datetime.datetime.utcnow()
+        nsh.expiration = None
+        nsh.put()
+        log.debug('%s modified at %s' % (nsh._id, nsh.modified))
+        # expire NIMSservers that have not sent is_alive for 2+ minutes
+        expired_servers = NIMSServer.all().ancestor(key_NIMSServers).filter('timestamp <', datetime.datetime.utcnow() - datetime.timedelta(minutes=2))
         for expired in expired_servers:
-            log.debug('expiring host %s at %s' % (expired, datetime.datetime.utcnow().isoformat()))
+            # delete expired NIMSServer entity
             expired.delete()
+            log.debug('%s had no is_alive for >2 minutes. removed from NIMSServer.' % expired._id)
+            # update NIMSServerHistory log. set expiration time, but leave expired=False
+            # expiration time, expired=False, indicates NIMSServerHistory entity is marked for expiration/lock
+            nsh = NIMSServerHistory.all().ancestor(key_NIMSServerHistory).filter('_id =', expired._id).filter('expired =', False).get()
+            if nsh:
+                nsh.expiration = datetime.datetime.utcnow()
+                nsh.put()
+                log.debug('%s will expire if no is_alive within 24 hours' % nsh._id)
+
+        # are there any NIMSServerHistory that have not been modified in over 1 day
+        expired_history = NIMSServerHistory.all().ancestor(key_NIMSServerHistory).filter('modified <', datetime.datetime.utcnow() - datetime.timedelta(days=1)).filter('expired =', False)
+        for expired in expired_history:
+            expired.expired = True
+            expired.expiration = datetime.datetime.utcnow()
+            expired.put()
+            log.debug('%s had no is_alive for >1 day, expired on %s' % (expired._id, expired.expiration.isoformat()))
 
     def return_NIMSServers(self):
         """writes list of registered NIMS Instances."""

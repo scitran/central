@@ -9,13 +9,13 @@ import re
 import uuid
 import webapp2
 from google.appengine.ext import db
-from internimsutil import AuthorizedHost, NIMSServer, key_AuthorizedHosts, key_NIMSServers
+from internimsutil import AuthorizedHost, NIMSServer, NIMSServerHistory, key_AuthorizedHosts, key_NIMSServers, key_NIMSServerHistory
 
 
 logging.basicConfig(level=logging.INFO)
 
 
-class AdminSplash(webapp2.RequestHandler):
+class Admin(webapp2.RequestHandler):
 
     """splash page to admin utilities - menu'ish"""
 
@@ -26,8 +26,8 @@ class AdminSplash(webapp2.RequestHandler):
                                 <body>
                                     <div>
                                     <h3>ADMIN PAGE</h3>
-                                    <a href='bootstrap'>bootstrap</a><br>
-                                    <a href='new'>create new auth host entry</a><br>
+                                    <a href='admin/bootstrap'>bootstrap</a><br>
+                                    <a href='admin/new'>create new auth host entry</a><br>
                                     placeholder1<br>
                                     </div>
                                 </body>
@@ -49,7 +49,7 @@ class Bootstrap(webapp2.RequestHandler):
                                     put bootstrapping setup stuff here.<br>
                                     nothing to see here.<br>
                                     move along.<br>
-                                    <a href='../admin/'>done</a>
+                                    <a href='../admin'>done</a>
                                 </body>
                             </html>
                             """)
@@ -75,7 +75,7 @@ class NewAuthHost(webapp2.RequestHandler):
                                             <textarea name="pubkey" rows="5" cols="43" required></textarea><br>
                                             <input type="submit" value="submit">
                                             <input type="reset" value="reset">
-                                            <a href="../admin/"><button type="button">cancel</button></a>
+                                            <a href="../admin"><button type="button">cancel</button></a>
                                         </form>
                                     </div>
                                 </body>
@@ -122,9 +122,9 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
                                         <strong>Submitted Info:</strong><br>
                                         commonname:  {cn}<br>
                                         pubkey:      {pubkey}<br><br>
-                                        <strong>Registration Entry:</strong><br>
+                                        <strong>AuthHost Entry:</strong><br>
                                         {nah}<br><br>
-                                        <a href='..'><button type="button">back to main</button></a>
+                                        <a href='../../admin'><button type="button">back to main</button></a>
                                     </div>
                                 </body>
                             </html>
@@ -140,7 +140,7 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
 # class UpdateAUthHostFeedback(webapp2.RequestHandler):
 #     def post(self):
 
-app = webapp2.WSGIApplication([(r'/admin/', AdminSplash),
+app = webapp2.WSGIApplication([(r'/admin', Admin),
                                (r'/admin/bootstrap', Bootstrap),
                                (r'/admin/new', NewAuthHost),
                                (r'/admin/new/confirm', NewAuthHostConfirm),

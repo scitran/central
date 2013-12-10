@@ -16,7 +16,7 @@ handlers:
   static_files: favicon.ico
   upload: favicon\.ico
 
-- url: /admin/.*
+- url: /admin.*
   script: admin.app
   secure: always
   login: admin

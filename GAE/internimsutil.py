@@ -7,6 +7,7 @@ from google.appengine.ext import db
 
 key_AuthorizedHosts = db.Key.from_path('InterNIMS', 'AuthorizedHosts')
 key_NIMSServers = db.Key.from_path('InterNIMS', 'NIMSServers')
+key_NIMSServerHistory = db.Key.from_path('InterNIMS', 'NIMSServerHistory')
 key_Challenges = db.Key.from_path('InterNIMS', 'Challenges')
 
 
@@ -16,6 +17,7 @@ class AuthorizedHost(db.Model):
     commonname = db.StringProperty()                # for human readability
     pubkey = db.StringProperty(multiline=True)      # security item (may change)
     active = db.BooleanProperty()
+    created = db.DateTimeProperty(auto_now_add=True)
 
     def __str__(self):
         return self._id
@@ -45,6 +47,22 @@ class NIMSServer(db.Model):
                 'pubkey': self.pubkey,
                 'timestamp': self.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%f'),
                 'users': self.userlist}
+
+
+class NIMSServerHistory(db.Model):
+
+    _id = db.StringProperty()                               # instance unique id, _id
+    created = db.DateTimeProperty(auto_now_add=True)        # time of creation
+    modified = db.DateTimeProperty()                        # timestamp of expiration
+    expiration = db.DateTimeProperty()
+    expired = db.BooleanProperty()                          # 'lock' history from further edits
+    # think about other information to be held by NIMSServerHistory
+
+    def as_dict(self):
+        return {'_id': self._id,
+                'auth_date': self.auth_date,
+                'last_seen': self.last_seen,
+                'expired': self.expired}
 
 
 class CRAMChallenge(db.Model):
