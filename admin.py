@@ -1,23 +1,22 @@
 #!/usr/bin/env python
 #
 # @author:  Kevin S. Hahn
-# BASICALLY DONE~ maybe add redirects so URLS don't require trailing slashes
 
-import json
-import logging
 import re
+import json
 import uuid
+import logging
 import webapp2
-from google.appengine.ext import db
-from internimsutil import AuthorizedHost, NIMSServer, NIMSServerHistory, key_AuthorizedHosts, key_NIMSServers, key_NIMSServerHistory
 
+from google.appengine.ext import ndb
+from internimsutil import AuthorizedHost, key_AuthorizedHosts
 
 logging.basicConfig(level=logging.INFO)
 
 
 class Admin(webapp2.RequestHandler):
 
-    """splash page to admin utilities - menu'ish"""
+    """splash page to admin utilities"""
 
     def get(self):
         self.response.write("""\
@@ -33,8 +32,6 @@ class Admin(webapp2.RequestHandler):
                                 </body>
                             </html>
                             """)
-    def post(self):
-        self.response.write("""don't do that (no POST'ing)""")
 
 
 class Bootstrap(webapp2.RequestHandler):
@@ -81,35 +78,31 @@ class NewAuthHost(webapp2.RequestHandler):
                                 </body>
                             </html>
                             """)
-    def post(self):
-        self.response.write("""stop it! (no POST'ing)""")
 
 
 class NewAuthHostConfirm(webapp2.RequestHandler):
 
-    """returns information to be returned to registrant, specifically 'uid'"""
+    """returns information to be returned to registrant"""
 
     def post(self):
         commonname = self.request.get('commonname')
         pubkey = self.request.get('pubkey').replace('\r','')
-        cn_clean = re.compile('[\W_]+').sub('_', commonname).strip().lower()  # '\W+' = not [a-zA-Z0-9_]
-        _id = cn_clean
-        # _id = uuid.uuid4()
+        cleanname = re.compile('[\W_]+').sub('_', commonname).strip().lower()  # '\W+' = not [a-zA-Z0-9_]
+        iid = cleanname
         counter = 1
         unique = False
-        # if uid exists, increment uid until unique
+        # if iid exists, increment iid until unique
         while not unique:
-            exists = AuthorizedHost().all().ancestor(key_AuthorizedHosts).filter('_id =', _id).get()
+            exists = AuthorizedHost().query(ancestor=key_AuthorizedHosts).filter(AuthorizedHost.id == iid).get()
             if exists:
                 # if it does exist, add a suffix to the name
-                _id = cn_clean + '_' + str(counter)
+                iid = cleanname + '_' + str(counter)
                 counter += 1
             else:
                 unique = True
 
-        # query/create - if nothing matches key_name, then create new with keyname
-        nah = AuthorizedHost(key_name=_id, parent=key_AuthorizedHosts, _id=_id, commonname=commonname, active=True)
-        nah.pubkey = pubkey
+        # query/create - if nothing matches iid, then create new with keyname
+        nah = AuthorizedHost(id=iid, parent=key_AuthorizedHosts, commonname=commonname, pubkey=pubkey, active=True)
         nah.put()
         # provide feedback to email to NIMS site admin
         self.response.write("""\
@@ -128,7 +121,7 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
                                     </div>
                                 </body>
                             </html>
-                            """.format(_id=_id, cn=commonname, pubkey=pubkey, nah=nah.as_dict()))
+                            """.format(_id=nah.id, cn=nah.commonname, pubkey=nah.pubkey, nah=nah.as_dict()))
 
 
 ### NOT IMPLEMENTENTED - webform to edit existing AuthorizedHost Entities
@@ -137,13 +130,11 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
 #     def get(self):
 #
 #
-# class UpdateAUthHostFeedback(webapp2.RequestHandler):
+# class UpdateAuthHostFeedback(webapp2.RequestHandler):
 #     def post(self):
 
 app = webapp2.WSGIApplication([(r'/admin', Admin),
                                (r'/admin/bootstrap', Bootstrap),
                                (r'/admin/new', NewAuthHost),
                                (r'/admin/new/confirm', NewAuthHostConfirm),
-                               # (r'admin/status/', AdminSplash),
-                               # (r'/admin/new/feedback', NewAuthHostFeedback)
                               ], debug=True)

@@ -24,3 +24,14 @@ handlers:
 - url: /.*
   script: internims.app
   secure: always
+
+skip_files:
+- ^(.*/)?#.*#$
+- ^(.*/)?.*~$
+- ^(.*/)?.*\.py[co]$
+- ^(.*/)?.*/RCS/.*$
+- ^(.*/)?\..*$
+- ^(.*/)?\.pem$
+- ^(.*/)?\.pub$
+- ^(.*/)?\.crt$
+- ^(.*/)?\internimsclient.py$
