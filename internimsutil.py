@@ -28,9 +28,8 @@ class AuthorizedHost(ndb.Model):
 class NIMSServer(ndb.Model):
 
     id = ndb.StringProperty()
-    commonname = ndb.StringProperty()                   # human readable
     pubkey = ndb.StringProperty()
-    hostname = ndb.StringProperty()
+    api_uri = ndb.StringProperty()
     timestamp = ndb.DateTimeProperty()
     userlist = ndb.StringProperty(repeated=True)
 
@@ -38,12 +37,11 @@ class NIMSServer(ndb.Model):
         return '%s: %s' % (str(self.timestamp), self.id)
 
     def as_dict(self):
-        return {'commonname': self.commonname,
-                '_id': self.id,
+        return {'_id': self.id,
                 'pubkey': self.pubkey,
-                'hostname': self.hostname,
-                'timestamp': self.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%f'),
-                'users': self.userlist}
+                'userlist': self.userlist,
+                'api_uri': self.api_uri,
+                'timestamp': self.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%f')}
 
 
 class NIMSServerHistory(ndb.Model):
