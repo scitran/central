@@ -1,6 +1,6 @@
 indexes:
 
-- kind: NIMSServerHistory
+- kind: ServerHistory
   ancestor: yes
   properties:
   - name: expired
@@ -16,7 +16,7 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-- kind: NIMSServer
+- kind: Server
   ancestor: yes
   properties:
   - name: timestamp

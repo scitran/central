@@ -5,12 +5,12 @@
 from google.appengine.ext import ndb
 
 
-key_AuthorizedHosts = ndb.Key('InterNIMS', 'AuthorizedHosts')
-key_NIMSServers = ndb.Key('InterNIMS', 'NIMSServers')
-key_NIMSServerHistory = ndb.Key('InterNIMS', 'NIMSServerHistory')
+k_AuthHosts = ndb.Key('InterNIMS', 'AuthHosts')
+k_Servers = ndb.Key('InterNIMS', 'Servers')
+k_ServerHistory = ndb.Key('InterNIMS', 'ServerHistory')
 
 
-class AuthorizedHost(ndb.Model):
+class AuthHost(ndb.Model):
 
     id = ndb.StringProperty()
     commonname = ndb.StringProperty()                   # human readable
@@ -25,7 +25,7 @@ class AuthorizedHost(ndb.Model):
         return {'_id': self.id, 'commonname': self.commonname, 'pubkey': self.pubkey}
 
 
-class NIMSServer(ndb.Model):
+class Server(ndb.Model):
 
     id = ndb.StringProperty()
     pubkey = ndb.StringProperty()
@@ -44,7 +44,7 @@ class NIMSServer(ndb.Model):
                 'timestamp': self.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%f')}
 
 
-class NIMSServerHistory(ndb.Model):
+class ServerHistory(ndb.Model):
 
     id = ndb.StringProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)

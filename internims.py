@@ -4,7 +4,6 @@
 
 import json
 import time
-import socket
 import base64
 import httplib
 import webapp2
@@ -19,7 +18,7 @@ import logging
 log = logging.getLogger('internims')
 logging.basicConfig(level=logging.DEBUG)
 
-from internimsutil import AuthorizedHost, NIMSServer, NIMSServerHistory, key_AuthorizedHosts, key_NIMSServers, key_NIMSServerHistory
+import internimsutil as inu
 
 
 class InterNIMS(webapp2.RequestHandler):
@@ -44,7 +43,7 @@ class InterNIMS(webapp2.RequestHandler):
             self.abort(400, e)
 
         # is iid authorized
-        authd = AuthorizedHost.query(AuthorizedHost.id == self.iid, AuthorizedHost.active == True, ancestor=key_AuthorizedHosts).get()
+        authd = inu.AuthHost.query(inu.AuthHost.id == self.iid, inu.AuthHost.active == True, ancestor=inu.k_AuthHosts).get()
         if not authd: self.abort(403, 'host is not authorized')
 
         # clean up pubkey line endings
@@ -65,13 +64,13 @@ class InterNIMS(webapp2.RequestHandler):
         # is api reachable
         try:
             # TODO: set to real hostname
-            # conn = httplib.HTTPSConnection(self.api_urii, timeout=10)
+            # conn = httplib.HTTPSConnection(self.api_uri, timeout=10)
             conn = httplib.HTTPSConnection('nims.stanford.edu', timeout=10)
             conn.request('HEAD', '', headers={'User-Agent': 'InterNIMS'})
         except AttributeError:
             log.debug('api_uri not set')
             self.abort(400, 'api_uri not set')
-        except socket.timeout:
+        except httplib.socket.timeout:
             log.debug('api_uri timed out')
             self.abort(403, 'api_uri timed out')
         else:
@@ -82,7 +81,7 @@ class InterNIMS(webapp2.RequestHandler):
                 self.abort(403, 'api_uri is not reachable')
 
         # create/update NIMSServer entity
-        server = NIMSServer.query(NIMSServer.id == self.iid, ancestor=key_NIMSServers).get() or NIMSServer(id=self.iid, parent=key_NIMSServers)
+        server = inu.Server.query(inu.Server.id == self.iid, ancestor=inu.k_Servers).get() or inu.Server(id=self.iid, parent=inu.k_Servers)
         server.pubkey = authd.pubkey                    # NIMSServer inherits pubkey from AuthorizedHost
         server.api_uri = self.api_uri
         server.userlist = self.userlist
@@ -90,7 +89,7 @@ class InterNIMS(webapp2.RequestHandler):
         server.put()
 
         # expire NIMSServerHistory that haven't been modified for 1+ day
-        expired_history = NIMSServerHistory.query(NIMSServerHistory.modified < datetime.datetime.utcnow() - datetime.timedelta(days=1), NIMSServerHistory.expired == False, ancestor=key_NIMSServerHistory)
+        expired_history = inu.ServerHistory.query(inu.ServerHistory.modified < datetime.datetime.utcnow() - datetime.timedelta(days=1), inu.ServerHistory.expired == False, ancestor=inu.k_ServerHistory)
         for expired in expired_history:
             expired.expired = True
             expired.expiration = datetime.datetime.utcnow()
@@ -98,7 +97,7 @@ class InterNIMS(webapp2.RequestHandler):
             log.debug('%s had no is_alive for >1 day, expired on %s' % (expired.id, expired.expiration.isoformat()))
 
         # create/update HIMSServerHistory entity, do not update 'expired' history entities
-        nsh = NIMSServerHistory.query(NIMSServerHistory.id == self.iid, NIMSServerHistory.expired == False, ancestor=key_NIMSServerHistory).get() or NIMSServerHistory(id=self.iid, parent=key_NIMSServerHistory)
+        nsh = inu.ServerHistory.query(inu.ServerHistory.id == self.iid, inu.ServerHistory.expired == False, ancestor=inu.k_ServerHistory).get() or inu.ServerHistory(id=self.iid, parent=inu.k_ServerHistory)
         nsh.expired = False
         nsh.modified = datetime.datetime.utcnow()
         nsh.expiration = None
@@ -106,20 +105,20 @@ class InterNIMS(webapp2.RequestHandler):
         log.info('%s modified at %s' % (nsh.id, nsh.modified))
 
         # remove NIMSservers that have not sent is_alive for 2+ minutes
-        expired_servers = NIMSServer.query(NIMSServer.timestamp < datetime.datetime.utcnow() - datetime.timedelta(minutes=2), ancestor=key_NIMSServers)
+        expired_servers = inu.Server.query(inu.Server.timestamp < datetime.datetime.utcnow() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
         for expired in expired_servers:
             log.debug('%s had no is_alive for >2 minutes. removed from NIMSServer.' % expired.id)
             expired.key.delete()
 
         # return NIMSServers, exclude requesting NIMS instance
-        servers = NIMSServer.query(NIMSServer.timestamp > datetime.datetime.now() - datetime.timedelta(minutes=2), ancestor=key_NIMSServers)
+        servers = inu.Server.query(inu.Server.timestamp > datetime.datetime.now() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
         # hack to side-steps GAE ndb limitation of not being able to use inequality filters on two different attributes
         remotes = [server for server in servers if server.id != self.iid]
         # all unique users from all remotes
         user_set = set([user for site in [remote.userlist for remote in remotes] for user in site])
         # create dict. keys are usernames, values are list of remote sites
         new_remotes = {user.split('#')[0]: [remote.id for remote in remotes if user in remote.userlist] for user in user_set}
-        self.response.write(json.dumps({'sites': [remote.as_dict() for remote in remotes], 'users': new_remotes}, sort_keys=True, indent=4, separators=(',', ': ')))
+        self.response.write(json.dumps({'sites': [remote.as_dict() for remote in remotes], 'users': new_remotes}))
 
 
 app = webapp2.WSGIApplication([('/', InterNIMS),

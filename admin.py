@@ -9,7 +9,8 @@ import logging
 import webapp2
 
 from google.appengine.ext import ndb
-from internimsutil import AuthorizedHost, key_AuthorizedHosts
+
+import internimsutil as inu
 
 logging.basicConfig(level=logging.INFO)
 
@@ -87,13 +88,13 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
     def post(self):
         commonname = self.request.get('commonname')
         pubkey = self.request.get('pubkey').replace('\r','')
-        cleanname = re.compile('[\W_]+').sub('_', commonname).strip().lower()  # '\W+' = not [a-zA-Z0-9_]
+        cleanname = re.sub('[\W_]+', '_', commonname).strip().lower()  # '\W+' = not [a-zA-Z0-9_]
         iid = cleanname
         counter = 1
         unique = False
         # if iid exists, increment iid until unique
         while not unique:
-            exists = AuthorizedHost().query(ancestor=key_AuthorizedHosts).filter(AuthorizedHost.id == iid).get()
+            exists = inu.AuthHost().query(inu.AuthHost.id == iid, ancestor=inu.k_AuthHosts).get()
             if exists:
                 # if it does exist, add a suffix to the name
                 iid = cleanname + '_' + str(counter)
@@ -102,7 +103,7 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
                 unique = True
 
         # query/create - if nothing matches iid, then create new with keyname
-        nah = AuthorizedHost(id=iid, parent=key_AuthorizedHosts, commonname=commonname, pubkey=pubkey, active=True)
+        nah = inu.AuthHost(id=iid, parent=inu.k_AuthHosts, commonname=commonname, pubkey=pubkey, active=True)
         nah.put()
         # provide feedback to email to NIMS site admin
         self.response.write("""\
