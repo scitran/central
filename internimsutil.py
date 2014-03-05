@@ -41,7 +41,7 @@ class Server(ndb.Model):
                 'pubkey': self.pubkey,
                 'userlist': self.userlist,
                 'api_uri': self.api_uri,
-                'timestamp': self.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%f')}
+                'timestamp': self.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
 
 
 class ServerHistory(ndb.Model):
