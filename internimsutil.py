@@ -8,7 +8,7 @@ from google.appengine.ext import ndb
 k_AuthHosts = ndb.Key('InterNIMS', 'AuthHosts')
 k_Servers = ndb.Key('InterNIMS', 'Servers')
 k_ServerHistory = ndb.Key('InterNIMS', 'ServerHistory')
-
+k_Configs = ndb.Key('InterNIMS', 'Configuration')
 
 class AuthHost(ndb.Model):
 
@@ -51,3 +51,11 @@ class ServerHistory(ndb.Model):
     modified = ndb.DateTimeProperty()                   # last mod
     expiration = ndb.DateTimeProperty()                 # expiration timer
     expired = ndb.BooleanProperty()                     # expired boolean
+
+
+class Config(ndb.Model):
+
+    name = ndb.StringProperty()
+    value = ndb.StringProperty()
+    default = ndb.StringProperty()
+    description = ndb.StringProperty()

@@ -5,7 +5,7 @@
 import json
 import time
 import base64
-import httplib
+import urllib
 import webapp2
 import datetime
 import Crypto.Hash.SHA
@@ -13,12 +13,25 @@ import Crypto.PublicKey.RSA
 import Crypto.Signature.PKCS1_v1_5
 
 from google.appengine.ext import ndb
+from google.appengine.api import urlfetch
 
 import logging
 log = logging.getLogger('internims')
 logging.basicConfig(level=logging.DEBUG)
 
 import internimsutil as inu
+
+
+# lazy load config db.
+if inu.Config.query(inu.Config.name == 'skip_reachable_check', ancestor=inu.k_Configs).get() == None:
+    log.warning('configuration "reachable_check" not found. lazy-loading default datastore item')
+    item = inu.Config(id='skip_reachable_check',
+               name='skip_reachable_check',
+               value='false',
+               default='false',
+               description='disables checking if reported api_uri is reachable',
+               parent=inu.k_Configs)
+    item.put()
 
 
 class InterNIMS(webapp2.RequestHandler):
@@ -46,7 +59,35 @@ class InterNIMS(webapp2.RequestHandler):
         authd = inu.AuthHost.query(inu.AuthHost.id == self.iid, inu.AuthHost.active == True, ancestor=inu.k_AuthHosts).get()
         if not authd: self.abort(403, 'host is not authorized')
 
-        # clean up pubkey line endings
+        # is reported api_uri reachable
+        skip_reachable_check = inu.Config.query(inu.Config.name == 'skip_reachable_check', ancestor=inu.k_Configs).get()
+        if skip_reachable_check.value in ['True', 'true', '1']:
+            log.warning('skipping "is_host_reachable" check of reported api_uri')
+        else:
+            if not self.api_uri.startswith('https'):
+                self.abort(400, 'api_uri ' + self.api_uri + ' is not https://')
+            try:
+                result = urlfetch.fetch(url=self.api_uri, method=urlfetch.HEAD, headers={'User-Agent': 'InterNIMS'}, deadline=5)
+            except AttributeError:
+                log.warning('api_uri ' + self.api_uri + ' not set')
+                self.abort(400, 'api_uri ' + self.api_uri + 'not set')
+            except urlfetch.InvalidURLError:
+                log.warning('api_uri ' + self.api_uri + ' is invalid')
+                self.abort(400, 'api_uri ' + self.api_uri + ' is invalid')
+            except urlfetch.DeadlineExceededError:
+                log.warning('api_uri ' + self.api_uri + ' timed out')
+                self.abort(400, 'api_uri ' + self.api_uri + ' timed out')
+            except urlfetch.DownloadError:
+                log.warning('api_uri ' + self.api_uri + ' had a download error')
+                self.abort(400, 'api_uri ' + self.api_uri + ' had a download error')
+
+            if result.status_code == 200:
+                log.info('api_uri ' + self.api_uri + ' is reachable')
+            else:
+                log.warning('api_uri is ' + self.api_uri + ' not reachable')
+                self.abort(403, 'api_uri ' + self.api_uri + ' is not reachable')
+
+        # clean up authd.pubkey line endings
         if authd.pubkey.endswith('\r\n'):
             auth.pubkey = authd.pubkey.replace('\n', '')
             authd.put()
@@ -56,29 +97,10 @@ class InterNIMS(webapp2.RequestHandler):
         h = Crypto.Hash.SHA.new(self.message)
         verifier = Crypto.Signature.PKCS1_v1_5.new(key)
         if verifier.verify(h, self.signature):
-            log.debug('message/signature is authentic')
+            log.info('message/signature is authentic')
         else:
-            log.debug('message/signature is not authentic')
-            self.abort(403)
-
-        # is api reachable
-        try:
-            # TODO: set to real hostname
-            # conn = httplib.HTTPSConnection(self.api_uri, timeout=10)
-            conn = httplib.HTTPSConnection('nims.stanford.edu', timeout=10)
-            conn.request('HEAD', '', headers={'User-Agent': 'InterNIMS'})
-        except AttributeError:
-            log.debug('api_uri not set')
-            self.abort(400, 'api_uri not set')
-        except httplib.socket.timeout:
-            log.debug('api_uri timed out')
-            self.abort(403, 'api_uri timed out')
-        else:
-            if conn.getresponse().status == 200:
-                log.debug('api_uri is reachable')
-            else:
-                log.debug('api_uri is not reachable')
-                self.abort(403, 'api_uri is not reachable')
+            log.warning('message/signature is not authentic')
+            self.abort(403, 'message/signature is not authentic')
 
         # create/update NIMSServer entity
         server = inu.Server.query(inu.Server.id == self.iid, ancestor=inu.k_Servers).get() or inu.Server(id=self.iid, parent=inu.k_Servers)
@@ -117,6 +139,7 @@ class InterNIMS(webapp2.RequestHandler):
         # all unique users from all remotes
         user_set = set([user for site in [remote.userlist for remote in remotes] for user in site])
         # create dict. keys are usernames, values are list of remote sites
+        # new_remotes is a dictionary, specific to the requesting host, keys = userid, value = list of sites where they have permissions
         new_remotes = {user.split('#')[0]: [remote.id for remote in remotes if user in remote.userlist] for user in user_set}
         self.response.write(json.dumps({'sites': [remote.as_dict() for remote in remotes], 'users': new_remotes}))
 

@@ -1,5 +1,11 @@
 indexes:
 
+- kind: Config
+  ancestor: yes
+  properties:
+  - name: name
+  - name: value
+
 - kind: ServerHistory
   ancestor: yes
   properties:
