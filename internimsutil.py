@@ -13,7 +13,6 @@ k_Configs = ndb.Key('InterNIMS', 'Configuration')
 class AuthHost(ndb.Model):
 
     id = ndb.StringProperty()
-    commonname = ndb.StringProperty()                   # human readable
     pubkey = ndb.StringProperty()
     active = ndb.BooleanProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
@@ -22,12 +21,13 @@ class AuthHost(ndb.Model):
         return self.id
 
     def as_dict(self):
-        return {'_id': self.id, 'commonname': self.commonname, 'pubkey': self.pubkey}
+        return {'_id': self.id, 'pubkey': self.pubkey}
 
 
 class Server(ndb.Model):
 
     id = ndb.StringProperty()
+    name = ndb.StringProperty()
     pubkey = ndb.StringProperty()
     api_uri = ndb.StringProperty()
     timestamp = ndb.DateTimeProperty()
@@ -38,6 +38,7 @@ class Server(ndb.Model):
 
     def as_dict(self):
         return {'_id': self.id,
+                'name': self.name,
                 'pubkey': self.pubkey,
                 'userlist': self.userlist,
                 'api_uri': self.api_uri,

@@ -67,8 +67,8 @@ class NewAuthHost(webapp2.RequestHandler):
                                 <body>
                                     <div>
                                         <form action="/admin/new/confirm" method="post">
-                                            Site ID (common name)<br>
-                                            <input type="text" name="commonname" size="60" required autofocus><br>
+                                            Preliminary Site ID (a string safe ID will be returned)<br>
+                                            <input type="text" name="pre_site_id" size="60" required autofocus><br>
                                             SSL Public Key (RSA)<br>
                                             <textarea name="pubkey" rows="5" cols="43" required></textarea><br>
                                             <input type="submit" value="submit">
@@ -86,24 +86,24 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
     """returns information to be returned to registrant"""
 
     def post(self):
-        commonname = self.request.get('commonname')
+        pre_site_id = self.request.get('pre_site_id')
         pubkey = self.request.get('pubkey').replace('\r','')
-        cleanname = re.sub('[\W_]+', '_', commonname).strip().lower()  # '\W+' = not [a-zA-Z0-9_]
-        iid = cleanname
+        cleanname = re.sub('[\W_]+', '_', pre_site_id).strip().lower()  # '\W+' = not [a-zA-Z0-9_]
+        site_id = cleanname
         counter = 1
         unique = False
         # if iid exists, increment iid until unique
         while not unique:
-            exists = inu.AuthHost().query(inu.AuthHost.id == iid, ancestor=inu.k_AuthHosts).get()
+            exists = inu.AuthHost().query(inu.AuthHost.id == site_id, ancestor=inu.k_AuthHosts).get()
             if exists:
                 # if it does exist, add a suffix to the name
-                iid = cleanname + '_' + str(counter)
+                site_id = cleanname + '_' + str(counter)
                 counter += 1
             else:
                 unique = True
 
-        # query/create - if nothing matches iid, then create new with keyname
-        nah = inu.AuthHost(id=iid, parent=inu.k_AuthHosts, commonname=commonname, pubkey=pubkey, active=True)
+        # query/create - if nothing matches site, then create new
+        nah = inu.AuthHost(id=site_id, parent=inu.k_AuthHosts, pubkey=pubkey, active=True)
         nah.put()
         # provide feedback to email to NIMS site admin
         self.response.write("""\
@@ -112,9 +112,8 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
                                 <body>
                                     <div>
                                         <strong>Assigned UUID:</strong><br>
-                                        {_id}<br><br>
+                                        {site_id}<br><br>
                                         <strong>Submitted Info:</strong><br>
-                                        commonname:  {cn}<br>
                                         pubkey:      {pubkey}<br><br>
                                         <strong>AuthHost Entry:</strong><br>
                                         {nah}<br><br>
@@ -122,7 +121,7 @@ class NewAuthHostConfirm(webapp2.RequestHandler):
                                     </div>
                                 </body>
                             </html>
-                            """.format(_id=nah.id, cn=nah.commonname, pubkey=nah.pubkey, nah=nah.as_dict()))
+                            """.format(site_id=nah.id, pubkey=nah.pubkey, nah=nah.as_dict()))
 
 
 ### NOT IMPLEMENTENTED - webform to edit existing AuthorizedHost Entities

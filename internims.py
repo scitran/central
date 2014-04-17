@@ -49,14 +49,15 @@ class InterNIMS(webapp2.RequestHandler):
             self.signature = base64.b64decode(self.request.headers.get('Authorization'))
             # parse request body as json
             self.payload = json.loads(self.message)
-            self.iid = self.payload.get('iid')
+            self.site = self.payload.get('site')
+            self.name = self.payload.get('name')
             self.api_uri = self.payload.get('api_uri')
             self.userlist = self.payload.get('users')
         except KeyError as e:
             self.abort(400, e)
 
-        # is iid authorized
-        authd = inu.AuthHost.query(inu.AuthHost.id == self.iid, inu.AuthHost.active == True, ancestor=inu.k_AuthHosts).get()
+        # is site authorized
+        authd = inu.AuthHost.query(inu.AuthHost.id == self.site, inu.AuthHost.active == True, ancestor=inu.k_AuthHosts).get()
         if not authd: self.abort(403, 'host is not authorized')
 
         # is reported api_uri reachable
@@ -103,8 +104,9 @@ class InterNIMS(webapp2.RequestHandler):
             self.abort(403, 'message/signature is not authentic')
 
         # create/update NIMSServer entity
-        server = inu.Server.query(inu.Server.id == self.iid, ancestor=inu.k_Servers).get() or inu.Server(id=self.iid, parent=inu.k_Servers)
+        server = inu.Server.query(inu.Server.id == self.site, ancestor=inu.k_Servers).get() or inu.Server(id=self.site, parent=inu.k_Servers)
         server.pubkey = authd.pubkey                    # NIMSServer inherits pubkey from AuthorizedHost
+        server.name = self.name
         server.api_uri = self.api_uri
         server.userlist = self.userlist
         server.timestamp = datetime.datetime.utcnow()
@@ -118,8 +120,8 @@ class InterNIMS(webapp2.RequestHandler):
             expired.put()
             log.debug('%s had no is_alive for >1 day, expired on %s' % (expired.id, expired.expiration.isoformat()))
 
-        # create/update HIMSServerHistory entity, do not update 'expired' history entities
-        nsh = inu.ServerHistory.query(inu.ServerHistory.id == self.iid, inu.ServerHistory.expired == False, ancestor=inu.k_ServerHistory).get() or inu.ServerHistory(id=self.iid, parent=inu.k_ServerHistory)
+        # create/update NIMSServerHistory entity, do not update 'expired' history entities
+        nsh = inu.ServerHistory.query(inu.ServerHistory.id == self.site, inu.ServerHistory.expired == False, ancestor=inu.k_ServerHistory).get() or inu.ServerHistory(id=self.site, parent=inu.k_ServerHistory)
         nsh.expired = False
         nsh.modified = datetime.datetime.utcnow()
         nsh.expiration = None
@@ -135,7 +137,7 @@ class InterNIMS(webapp2.RequestHandler):
         # return NIMSServers, exclude requesting NIMS instance
         servers = inu.Server.query(inu.Server.timestamp > datetime.datetime.now() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
         # hack to side-steps GAE ndb limitation of not being able to use inequality filters on two different attributes
-        remotes = [server for server in servers if server.id != self.iid]
+        remotes = [server for server in servers if server.id != self.site]
         # all unique users from all remotes
         user_set = set([user for site in [remote.userlist for remote in remotes] for user in site])
         # create dict. keys are usernames, values are list of remote sites
