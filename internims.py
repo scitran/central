@@ -90,7 +90,7 @@ class InterNIMS(webapp2.RequestHandler):
 
         # clean up authd.pubkey line endings
         if authd.pubkey.endswith('\r\n'):
-            auth.pubkey = authd.pubkey.replace('\n', '')
+            authd.pubkey = authd.pubkey.replace('\n', '')
             authd.put()
 
         # verify message/signature
@@ -135,9 +135,7 @@ class InterNIMS(webapp2.RequestHandler):
             expired.key.delete()
 
         # return NIMSServers, exclude requesting NIMS instance
-        servers = inu.Server.query(inu.Server.timestamp > datetime.datetime.now() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
-        # hack to side-steps GAE ndb limitation of not being able to use inequality filters on two different attributes
-        remotes = [server for server in servers if server.id != self.site]
+        remotes = inu.Server.query(inu.Server.timestamp > datetime.datetime.now() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
         # all unique users from all remotes
         user_set = set([user for site in [remote.userlist for remote in remotes] for user in site])
         # create dict. keys are usernames, values are list of remote sites
