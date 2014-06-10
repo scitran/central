@@ -134,14 +134,15 @@ class InterNIMS(webapp2.RequestHandler):
             log.debug('%s had no is_alive for >2 minutes. removed from NIMSServer.' % expired.id)
             expired.key.delete()
 
-        # return NIMSServers, exclude requesting NIMS instance
+        # return NIMSServers, include requesting NIMS instance
         remotes = inu.Server.query(inu.Server.timestamp > datetime.datetime.now() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
-        # all unique users from all remotes
-        user_set = set([user for site in [remote.userlist for remote in remotes] for user in site])
-        # create dict. keys are usernames, values are list of remote sites
-        # new_remotes is a dictionary, specific to the requesting host, keys = userid, value = list of sites where they have permissions
-        new_remotes = {user.split('#')[0]: [remote.id for remote in remotes if user in remote.userlist] for user in user_set}
-        self.response.write(json.dumps({'sites': [remote.as_dict() for remote in remotes], 'users': new_remotes}))
+        # unique set of users who have data at other sites, and are from the requesting site
+        user_set = set([user for site in [remote.userlist for remote in remotes] for user in site if user.endswith('#'+self.site)])
+        # dict comphrension, {username : [remote1, remote2], username2:....}
+        user_remotes = {user.split('#')[0]: [{'_id': remote.id, 'name': remote.name} for remote in remotes if user in remote.userlist] for user in user_set}
+        log.debug(user_remotes)
+
+        self.response.write(json.dumps({'sites': [remote.as_dict() for remote in remotes], 'users': user_remotes}))
 
 
 app = webapp2.WSGIApplication([('/', InterNIMS),
