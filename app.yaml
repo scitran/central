@@ -16,6 +16,10 @@ handlers:
   static_files: favicon.ico
   upload: favicon\.ico
 
+- url: /tasks/clean
+  script: internims.app
+  login: admin
+
 - url: /admin.*
   script: admin.app
   secure: always

@@ -1,0 +1,4 @@
+cron:
+- description: clean and expire servers
+  url: /tasks/clean
+  schedule: every 1 minutes

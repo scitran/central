@@ -112,14 +112,6 @@ class InterNIMS(webapp2.RequestHandler):
         server.timestamp = datetime.datetime.utcnow()
         server.put()
 
-        # expire NIMSServerHistory that haven't been modified for 1+ day
-        expired_history = inu.ServerHistory.query(inu.ServerHistory.modified < datetime.datetime.utcnow() - datetime.timedelta(days=1), inu.ServerHistory.expired == False, ancestor=inu.k_ServerHistory)
-        for expired in expired_history:
-            expired.expired = True
-            expired.expiration = datetime.datetime.utcnow()
-            expired.put()
-            log.debug('%s had no is_alive for >1 day, expired on %s' % (expired.id, expired.expiration.isoformat()))
-
         # create/update NIMSServerHistory entity, do not update 'expired' history entities
         nsh = inu.ServerHistory.query(inu.ServerHistory.id == self.site, inu.ServerHistory.expired == False, ancestor=inu.k_ServerHistory).get() or inu.ServerHistory(id=self.site, parent=inu.k_ServerHistory)
         nsh.expired = False
@@ -127,12 +119,6 @@ class InterNIMS(webapp2.RequestHandler):
         nsh.expiration = None
         nsh.put()
         log.info('%s modified at %s' % (nsh.id, nsh.modified))
-
-        # remove NIMSservers that have not sent is_alive for 2+ minutes
-        expired_servers = inu.Server.query(inu.Server.timestamp < datetime.datetime.utcnow() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
-        for expired in expired_servers:
-            log.debug('%s had no is_alive for >2 minutes. removed from NIMSServer.' % expired.id)
-            expired.key.delete()
 
         # return NIMSServers, include requesting NIMS instance
         remotes = inu.Server.query(inu.Server.timestamp > datetime.datetime.now() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
@@ -145,5 +131,32 @@ class InterNIMS(webapp2.RequestHandler):
         self.response.write(json.dumps({'sites': [remote.as_dict() for remote in remotes], 'users': user_remotes}))
 
 
+class Cleaner(webapp2.RequestHandler):
+    """
+    secured URL route to initiate cleaning job.
+
+    HTTP VERBS
+        GET
+    """
+    def __init__(self, request=None, response=None):
+        webapp2.RequestHandler.__init__(self, request, response)
+
+    def get(self):
+        # expire NIMSServerHistory that haven't been modified for 1+ day
+        expired_history = inu.ServerHistory.query(inu.ServerHistory.modified < datetime.datetime.utcnow() - datetime.timedelta(days=1), inu.ServerHistory.expired == False, ancestor=inu.k_ServerHistory)
+        for expired in expired_history:
+            expired.expired = True
+            expired.expiration = datetime.datetime.utcnow()
+            expired.put()
+            log.info('%s had no is_alive for >1 day, expired on %s' % (expired.id, expired.expiration.isoformat()))
+
+        # remove NIMSservers that have not sent is_alive for 2+ minutes
+        expired_servers = inu.Server.query(inu.Server.timestamp < datetime.datetime.utcnow() - datetime.timedelta(minutes=2), ancestor=inu.k_Servers)
+        for expired in expired_servers:
+            log.info('%s had no is_alive for >2 minutes. removed from NIMSServer.' % expired.id)
+            expired.key.delete()
+
+
 app = webapp2.WSGIApplication([('/', InterNIMS),
+                               ('/tasks/clean', Cleaner)
                               ], debug=True)
