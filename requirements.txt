@@ -1,0 +1,9 @@
+Paste==1.7.5.1
+WebOb==1.4
+argparse==1.2.1
+certifi==14.05.14
+distribute==0.6.24
+pymongo==2.7.2
+requests==2.4.0
+webapp2==2.5.2
+wsgiref==0.1.2

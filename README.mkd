@@ -1,0 +1,66 @@
+# SDMC
+
+---
+Central Instance Registry.
+
+---
+
+### Installation
+
+Install mongodb.
+    - [debian installation](http://docs.mongodb.org/manual/tutorial/install-mongodb-on-debian/)
+
+Install Nginx, uwsgi, uwsgi-plugin-python, git and python stuff.
+
+    sudo apt-get install \
+        nginx \
+        build-essential python python-dev python-virtualenv \
+        uwsgi uwsgi-plugin-python \
+        git
+
+Create and activated virtualenv.
+
+    sudo chmod ugo+rw /var/local/
+    virtualenv /var/local/sdmc_env
+    source /var/local/sdmc_env/bin/activate
+
+Clone sdmc git repository.
+
+    git clone git@github.com:scitran/internims.git /var/local/sdmc
+
+Install requirements.
+
+    pip install -r requirements.txt
+
+Create a logging directory, and make it writeable from webserver users (www-data?).
+
+    mkdir -p /var/local/sdmc/log
+    chown :www-data /var/local/sdmc/log
+    chmod g+w /var/local/sdmc/log
+
+Copy and edit configuration files.  The nginx configuration will need to know the location of the server certificate and server key.  The uwsgi configuration will need to know the location of the pem file.  Certificate file should contain certificate only, server.cert.  Key file should contain key only, server.key.  Pem file should contain private key, then certificate, and intermediates.  See [instructions for creating a pem file](https://www.digicert.com/ssl-support/pem-ssl-creation.htm#2in1) for more information.
+
+    cp production.ini.sample production.ini
+    cp nginx.conf.sample nginx.conf
+    vim production.ini nginx.conf
+
+
+Configure nginx.
+
+    ln -s /var/local/sdmc/nginx.conf \
+        /etc/nginx/sites-available/sdmc
+    ln -s /etc/nginx/sites-available/sdmc \
+        /etc/nginx/sites-enabled/sdmc
+
+Configure uwsgi.
+
+    ln -s /var/local/sdmc/production.ini \
+        /etc/uwsgi/apps-available/sdmc.ini
+    ln -s /etc/uwsgi/apps-available/sdmc.ini \
+        /etc/uwsgi/apps-enabled/sdmc.ini
+
+Fire it up.
+
+    sudo service nginx restart
+    sudo service mongodb restart
+    sudo service uwsgi restart sdmc
