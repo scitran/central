@@ -50,13 +50,9 @@ class SDMC(webapp2.RequestHandler):
                 {'$project': {'name': 1, 'remote_users': {'$size': '$users'}}},
         ])['result']
         remotes = {site['_id']: {'remote_users': site['remote_users'], 'name': site['name']} for site in users_from_remotes}
-        result = _dict_merge(access, remotes)
-        final = {v.get('name'): {'remote_access': v.get('remote_access', 0), 'remote_users': v.get('remote_users', 0)}
-                 for site, v in result.iteritems()
-                 if v.get('name') is not None
-                 }
-        final['num_sites'] = len(final)
-        self.response.write(json.dumps(final))
+        result = {'sites': [dict([('_id', k)] + v.items()) for  k, v in _dict_merge(access, remotes).iteritems()]}
+        result['num_sites'] = len(result['sites'])
+        self.response.write(json.dumps(result))
 
     def post(self):
         """Update peer registry using POST data from approved reachable hosts."""
