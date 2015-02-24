@@ -20,9 +20,9 @@ import logging
 import logging.config
 logging.config.fileConfig(configfile, disable_existing_loggers=False)
 
-import sdmc
+import central
 
-application = sdmc.app
+application = central.app
 
 kwargs = dict(tz_aware=True)
 db_uri = config.get('sdmc', 'db_uri')

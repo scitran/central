@@ -32,7 +32,7 @@ def _dict_merge(a, b):
     return result
 
 
-class SDMC(webapp2.RequestHandler):
+class Central(webapp2.RequestHandler):
 
     """SDMC POST and GET request handler."""
 
@@ -122,7 +122,7 @@ class SDMC(webapp2.RequestHandler):
 
 
 routes = [
-    webapp2.Route(r'/', SDMC)
+    webapp2.Route(r'/', Central)
 ]
 
 app = webapp2.WSGIApplication(routes)
