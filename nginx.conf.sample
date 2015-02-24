@@ -12,7 +12,7 @@ server {
     ssl_verify_client optional;
     ssl_verify_depth 3;
 
-    location / {
+    location /api {
         uwsgi_pass unix:/run/uwsgi/app/sdmc/socket;
         include uwsgi_params;
         uwsgi_param SSL_CLIENT_VERIFY $ssl_client_verify;

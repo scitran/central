@@ -1,5 +1,5 @@
-
-# @author: Kevin S Hahn
+# @author:  Kevin S Hahn
+#           Gunnar Schaefer
 
 import os
 import pymongo
