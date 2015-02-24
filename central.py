@@ -129,27 +129,23 @@ app = webapp2.WSGIApplication(routes)
 app.config = dict(check_reachable=True)
 
 if __name__ == '__main__':
-    import os
     import pymongo
     import argparse
-    import ConfigParser
     import paste.httpserver
 
-    log = logging.getLogger('sdmc')
+    logging.basicConfig()
+    logging.getLogger('paste.httpserver').setLevel(logging.INFO)  # silence paste loggin
+    log = logging.getLogger('central')
 
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('config_file', help='path to config file')
-    arg_parser.add_argument('--db_uri', narg=1, help='internims DB URI')
+    arg_parser.add_argument('--db_uri', help='internims DB URI [mongodb://127.0.0.1/central]', default='mongodb://127.0.0.1/central')
+    arg_parser.add_argument('--log_level', help='logging level [info]', default='info')
     args = arg_parser.parse_args()
 
-    config = ConfigParser.ConfigParser({'here': os.path.dirname(os.path.abspath(args.config_file))})
-    config.read(args.config_file)
-    logging.config.fileConfig(args.config_file, disable_existing_loggers=False)
-    logging.getLogger('paste.httpserver').setLevel(logging.DEBUG)  # silence paste loggin
+    log.setLevel(getattr(logging, args.log_level.upper()))
 
     kwargs = dict(tz_aware=True)
-    db_uri = args.db_uri or config.get('internims', 'db_uri')
-    db_client = pymongo.MongoReplicaSetClient(db_uri, **kwargs) if 'replicaSet' in db_uri else pymongo.MongoClient(db_uri, **kwargs)
+    db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
     app.db = db_client.get_default_database()
 
     app.debug = True
