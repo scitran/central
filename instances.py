@@ -124,6 +124,9 @@ class Instance(webapp2.RequestHandler):
         except requests.exceptions.Timeout:
             log.debug('connection to %s timed out.' % api_uri)
             self.abort(500, 'connection to %s timed out.' % api_uri)  # XXX error code
+        except requests.exceptions.ConnectionError:
+            log.debug('connection error while connecting to %s' % api_uri)
+            self.abort(500, 'connection error while connecting to %s' % api_uri)
         else:
             if r.status_code != 200:
                 log.debug('head request to %s failed.' % api_uri)
