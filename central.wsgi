@@ -2,12 +2,9 @@
 #           Gunnar Schaefer
 
 import os
+import logging
 import pymongo
 import argparse
-
-import logging
-logging.basicConfig()
-log = logging.getLogger('central')
 
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python_egg_cache'
 os.umask(0o022)
@@ -17,7 +14,8 @@ ap.add_argument('--db_uri', help='mongodb uri [mongodb://127.0.0.1/central]', de
 ap.add_argument('--log_level', help='logging level [info]', default='info')
 args = ap.parse_args()
 
-log.setLevel(getattr(logging, args.log_level.upper()))
+logging.basicConfig(level=getattr(logging, args.log_level.upper()))
+log = logging.getLogger('central')
 
 import central
 application = central.app

@@ -33,16 +33,15 @@ if __name__ == '__main__':
     import argparse
     import paste.httpserver
 
-    logging.basicConfig()
     logging.getLogger('paste.httpserver').setLevel(logging.INFO)  # silence paste loggin
-    log = logging.getLogger('central')
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('--db_uri', help='internims DB URI [mongodb://127.0.0.1/central]', default='mongodb://127.0.0.1/central')
     arg_parser.add_argument('--log_level', help='logging level [info]', default='info')
     args = arg_parser.parse_args()
 
-    log.setLevel(getattr(logging, args.log_level.upper()))
+    logging.basicConfig(level=getattr(logging, args.log_level.upper()))
+    log = logging.getLogger('central')
 
     kwargs = dict(tz_aware=True)
     db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
