@@ -7,6 +7,7 @@
 import logging
 log = logging.getLogger(__name__)
 logging.getLogger('requests').setLevel(logging.WARNING)  # silence Requests library logging
+logging.getLogger('MARKDOWN').setLevel(logging.WARNING)  # silence Mardkwon library logging
 
 import webapp2
 import webapp2_extras.routes
