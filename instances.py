@@ -146,7 +146,7 @@ class Instance(webapp2.RequestHandler):
             users_with_remotes.setdefault(site['users']['user'], []).append({'_id': site['_id'], 'name': site['name']})
 
         active_sites = self.app.db.instances.find(
-                {'_id': {'$ne': _id}, 'last_seen': {'$gt': datetime.datetime.now() - datetime.timedelta(minutes=2)}},
+                {'last_seen': {'$gt': datetime.datetime.now() - datetime.timedelta(minutes=2)}},
                 {'users': 0, 'last_seen': 0, 'date_added': 0},
         )
         self.response.write(json.dumps({'sites': list(active_sites), 'users': users_with_remotes}, default=bson.json_util.default))
