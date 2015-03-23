@@ -5,7 +5,12 @@
 """Scitran Central peer registry."""
 
 import logging
-log = logging.getLogger(__name__)
+logging.basicConfig(
+        format='%(asctime)s %(name)16.16s:%(levelname)4.4s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=logging.DEBUG,
+        )
+log = logging.getLogger('central')
 logging.getLogger('requests').setLevel(logging.WARNING)  # silence Requests library logging
 logging.getLogger('MARKDOWN').setLevel(logging.WARNING)  # silence Mardkwon library logging
 
@@ -34,16 +39,14 @@ if __name__ == '__main__':
     import argparse
     import paste.httpserver
 
-    logging.getLogger('paste.httpserver').setLevel(logging.INFO)  # silence paste loggin
-
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('ssl_cert', help-'scitran central ssl cert, containing key and certificate, in pem format')
     arg_parser.add_argument('--db_uri', help='internims DB URI [mongodb://127.0.0.1/central]', default='mongodb://127.0.0.1/central')
     arg_parser.add_argument('--log_level', help='logging level [info]', default='info')
     args = arg_parser.parse_args()
 
-    logging.basicConfig(level=getattr(logging, args.log_level.upper()))
-    log = logging.getLogger('central')
+    logging.getLogger('paste.httpserver').setLevel(logging.INFO)  # silence paste loggin
+    log.setLevel(getattr(logging, args.log_level.upper()))
 
     kwargs = dict(tz_aware=True)
     db_client = pymongo.MongoReplicaSetClient(args.db_uri, **kwargs) if 'replicaSet' in args.db_uri else pymongo.MongoClient(args.db_uri, **kwargs)
