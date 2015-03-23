@@ -1,0 +1,12 @@
+[uwsgi]
+socket = /run/uwsgi/app/central/socket
+chmod-socket = 666
+plugins = python
+chdir = /var/local/central
+virtualenv = /var/local/central_env
+wsgi-file = /var/local/central/central.wsgi
+processes = 2
+threads = 2
+master = 1
+logto = /var/log/uwsgi/app/central.log
+pyargv = /etc/nginx/<server_key+cert.pem>
