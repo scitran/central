@@ -90,7 +90,7 @@ class Instance(webapp2.RequestHandler):
     def put(self, _id):
         """Update peer registry using PUT data from approved reachable hosts."""
         # does hostname match rep
-        remote_hostname, aliases, _ = requests.utils.socket.gethostbyaddr(self.request.environ.get('REMOTE_ADDR'))
+        remote_hostname, aliases, addr = requests.utils.socket.gethostbyaddr(self.request.environ.get('REMOTE_ADDR'))
         if self.request.environ['SSL_CLIENT_VERIFY'] != 'SUCCESS':
             log.debug('%s sent request without SSL client certificate' % remote_hostname)
             self.abort(401, 'No required SSL certificate was sent.')  # auth required
@@ -110,14 +110,16 @@ class Instance(webapp2.RequestHandler):
             log.debug('host %s is not authorized' % _id)
             self.abort(403, 'host %s is not authorized' % _id)
 
-        # does reverse lookup hostname match _id
+        # does reverse lookup hostname match api_url
         if not urlparse.urlparse(api_uri).hostname.endswith(remote_hostname.lower()):
-            log.debug('reverse lookup does not match _id %s.' % _id)
-            self.abort(403, 'reverse lookup does not match _id %s.' % _id)
+            # check if the reported api_uri and remote_addr hostname resolve to the same underlying IP
+            if addr[0] != requests.utils.socket.gethostbyname(urlparse.urlparse(api_uri).hostname):
+                log.debug('reverse lookup does not match api %s.' % api_uri)
+                self.abort(403, 'reverse lookup does not match api %s.' % api_uri)
 
         # is host reachable
         try:
-            r = requests.head(api_uri, timeout=3)
+            r = requests.head(api_uri, timeout=3, cert=self.app.ssl_cert)
         except requests.packages.urllib3.exceptions.ProtocolError:
             log.debug('could not connect to %s. Name or Service not known.' % api_uri)
             self.abort(500, 'could not connect to %s. Name or Service not known.' % api_uri)  # XXX error code?
